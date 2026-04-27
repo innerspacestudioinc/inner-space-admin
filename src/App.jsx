@@ -285,6 +285,11 @@ function App() {
             />
           </label>
 
+          <label>
+            content_type
+            <input name="content_type" value={formValues.content_type} onChange={handleInputChange} />
+          </label>
+
           <label className="checkbox-label">
             <input
               type="checkbox"
@@ -293,6 +298,16 @@ function App() {
               onChange={handleInputChange}
             />
             featured
+          </label>
+
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              name="published"
+              checked={formValues.published}
+              onChange={handleInputChange}
+            />
+            published
           </label>
 
           <button className="full-width" type="submit" disabled={isSaving || isUploading}>
