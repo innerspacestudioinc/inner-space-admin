@@ -29,6 +29,7 @@ function App() {
   const [formValues, setFormValues] = useState(initialFormValues)
   const [submitStatus, setSubmitStatus] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
 
   async function loadContentRows() {
     const { data, error } = await supabase.from('content').select('*').limit(5)
@@ -62,6 +63,44 @@ function App() {
       ...current,
       [name]: type === 'checkbox' ? checked : value,
     }))
+  }
+
+  async function uploadFileAndSetUrl(file, bucketName, targetFieldName) {
+    if (!file) {
+      return
+    }
+
+    setIsUploading(true)
+    setSubmitStatus('')
+
+    const filePath = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`
+    const { error: uploadError } = await supabase.storage.from(bucketName).upload(filePath, file)
+
+    if (uploadError) {
+      setSubmitStatus(`Could not upload ${file.name}: ${uploadError.message}`)
+      setIsUploading(false)
+      return
+    }
+
+    const { data } = supabase.storage.from(bucketName).getPublicUrl(filePath)
+
+    setFormValues((current) => ({
+      ...current,
+      [targetFieldName]: data.publicUrl,
+    }))
+
+    setSubmitStatus(`${file.name} uploaded successfully ✅`)
+    setIsUploading(false)
+  }
+
+  async function handleAudioFileChange(event) {
+    const file = event.target.files?.[0]
+    await uploadFileAndSetUrl(file, 'audio', 'audio_file_name')
+  }
+
+  async function handleThumbnailFileChange(event) {
+    const file = event.target.files?.[0]
+    await uploadFileAndSetUrl(file, 'thumbnails', 'thumbnail_file_name')
   }
 
   async function handleSubmit(event) {
@@ -204,6 +243,16 @@ function App() {
           </label>
 
           <label>
+            upload audio file
+            <input type="file" accept="audio/*" onChange={handleAudioFileChange} />
+          </label>
+
+          <label>
+            upload thumbnail image
+            <input type="file" accept="image/*" onChange={handleThumbnailFileChange} />
+          </label>
+
+          <label>
             recommended_next_id
             <input
               name="recommended_next_id"
@@ -222,8 +271,8 @@ function App() {
             featured
           </label>
 
-          <button className="full-width" type="submit" disabled={isSaving}>
-            {isSaving ? 'Saving…' : 'Create content item'}
+          <button className="full-width" type="submit" disabled={isSaving || isUploading}>
+            {isSaving ? 'Saving…' : isUploading ? 'Uploading file…' : 'Create content item'}
           </button>
         </form>
         {submitStatus && <p className="hint">{submitStatus}</p>}
