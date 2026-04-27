@@ -3,10 +3,11 @@ import { supabase } from './supabaseClient'
 
 function App() {
   const [status, setStatus] = useState('Checking connection...')
+  const [contentRows, setContentRows] = useState([])
 
   useEffect(() => {
     async function checkConnection() {
-      const { error } = await supabase.from('profiles').select('id').limit(1)
+      const { data, error } = await supabase.from('content').select('*').limit(5)
 
       if (error) {
         setStatus(`Connected, but table check failed: ${error.message}`)
@@ -14,6 +15,7 @@ function App() {
       }
 
       setStatus('Connected to Supabase ✅')
+      setContentRows(data ?? [])
     }
 
     checkConnection()
@@ -27,10 +29,28 @@ function App() {
       <section className="card">
         <h2>Supabase status</h2>
         <p>{status}</p>
-        <p className="hint">
-          Note: This starter checks a table named <code>profiles</code>. If you use a different table,
-          we can change this in the next step.
-        </p>
+        {contentRows.length > 0 ? (
+          <table>
+            <thead>
+              <tr>
+                {Object.keys(contentRows[0]).map((key) => (
+                  <th key={key}>{key}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {contentRows.map((row, index) => (
+                <tr key={index}>
+                  {Object.keys(contentRows[0]).map((key) => (
+                    <td key={key}>{String(row[key] ?? '')}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="hint">No rows returned from the <code>content</code> table.</p>
+        )}
       </section>
     </main>
   )
