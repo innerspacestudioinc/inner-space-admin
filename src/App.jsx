@@ -30,6 +30,8 @@ function App() {
   const [submitStatus, setSubmitStatus] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [selectedAudioFile, setSelectedAudioFile] = useState(null)
+  const [selectedThumbnailFile, setSelectedThumbnailFile] = useState(null)
 
   async function loadContentRows() {
     const { data, error } = await supabase.from('content').select('*').limit(5)
@@ -65,42 +67,36 @@ function App() {
     }))
   }
 
-  async function uploadFileAndSetUrl(file, bucketName, targetFieldName) {
-    if (!file) {
-      return
-    }
+  async function uploadFile(file, bucketName) {
+    const sanitizedFileName = file.name.replace(/\s+/g, '-')
+    const filePath = `${Date.now()}-${sanitizedFileName}`
 
-    setIsUploading(true)
-    setSubmitStatus('')
-
-    const filePath = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`
     const { error: uploadError } = await supabase.storage.from(bucketName).upload(filePath, file)
 
     if (uploadError) {
-      setSubmitStatus(`Could not upload ${file.name}: ${uploadError.message}`)
-      setIsUploading(false)
-      return
+      console.error(`Upload failed for ${file.name} in bucket "${bucketName}"`, uploadError)
+      throw new Error(`Could not upload ${file.name}: ${uploadError.message}`)
     }
 
     const { data } = supabase.storage.from(bucketName).getPublicUrl(filePath)
 
-    setFormValues((current) => ({
-      ...current,
-      [targetFieldName]: data.publicUrl,
-    }))
+    if (!data?.publicUrl) {
+      const publicUrlError = new Error(`Could not generate public URL for ${file.name}`)
+      console.error(`Public URL generation failed for ${file.name} in bucket "${bucketName}"`, publicUrlError)
+      throw publicUrlError
+    }
 
-    setSubmitStatus(`${file.name} uploaded successfully ✅`)
-    setIsUploading(false)
+    return data.publicUrl
   }
 
-  async function handleAudioFileChange(event) {
+  function handleAudioFileChange(event) {
     const file = event.target.files?.[0]
-    await uploadFileAndSetUrl(file, 'audio', 'audio_file_name')
+    setSelectedAudioFile(file ?? null)
   }
 
-  async function handleThumbnailFileChange(event) {
+  function handleThumbnailFileChange(event) {
     const file = event.target.files?.[0]
-    await uploadFileAndSetUrl(file, 'thumbnails', 'thumbnail_file_name')
+    setSelectedThumbnailFile(file ?? null)
   }
 
   async function handleSubmit(event) {
@@ -110,6 +106,30 @@ function App() {
 
     const selectedCategory =
       formValues.category === 'Other' ? formValues.category_other.trim() : formValues.category.trim()
+
+    let uploadedAudioUrl = formValues.audio_file_name.trim() || null
+    let uploadedThumbnailUrl = formValues.thumbnail_file_name.trim() || null
+
+    try {
+      if (selectedAudioFile || selectedThumbnailFile) {
+        setIsUploading(true)
+      }
+
+      if (selectedAudioFile) {
+        uploadedAudioUrl = await uploadFile(selectedAudioFile, 'audio')
+      }
+
+      if (selectedThumbnailFile) {
+        uploadedThumbnailUrl = await uploadFile(selectedThumbnailFile, 'thumbnails')
+      }
+    } catch (uploadError) {
+      setSubmitStatus(uploadError.message)
+      setIsSaving(false)
+      setIsUploading(false)
+      return
+    }
+
+    setIsUploading(false)
 
     const payload = {
       content_id: formValues.content_id.trim(),
@@ -124,8 +144,8 @@ function App() {
       duration: formValues.duration.trim() || null,
       description: formValues.description.trim() || null,
       source_file_name: formValues.source_file_name.trim() || null,
-      audio_file_name: formValues.audio_file_name.trim() || null,
-      thumbnail_file_name: formValues.thumbnail_file_name.trim() || null,
+      audio_file_name: uploadedAudioUrl,
+      thumbnail_file_name: uploadedThumbnailUrl,
       featured: formValues.featured,
       published: formValues.published,
       recommended_next_id: formValues.recommended_next_id.trim() || null,
@@ -137,12 +157,16 @@ function App() {
     if (error) {
       setSubmitStatus(`Could not create content item: ${error.message}`)
       setIsSaving(false)
+      setIsUploading(false)
       return
     }
 
     setSubmitStatus('New content item created successfully ✅')
     setFormValues(initialFormValues)
+    setSelectedAudioFile(null)
+    setSelectedThumbnailFile(null)
     setIsSaving(false)
+    setIsUploading(false)
     loadContentRows()
   }
 
