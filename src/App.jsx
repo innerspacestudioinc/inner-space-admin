@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 
+const CATEGORY_OPTIONS = ['Sleep', 'Pain', 'Hormones', 'Racing Thoughts', 'Stress', 'Learn', 'Breathwork', 'Other']
+const VARIANT_OPTIONS = ['Voice Only', 'Ambience', 'Brown Noise', 'Mix']
+
 const initialFormValues = {
   content_id: '',
   title: '',
   series: '',
   category: '',
+  category_other: '',
   tags: '',
   variant: '',
   duration: '',
@@ -14,9 +18,9 @@ const initialFormValues = {
   audio_file_name: '',
   thumbnail_file_name: '',
   featured: false,
-  published: false,
+  published: true,
   recommended_next_id: '',
-  content_type: '',
+  content_type: 'guided_session',
 }
 
 function App() {
@@ -44,6 +48,16 @@ function App() {
 
   function handleInputChange(event) {
     const { name, value, type, checked } = event.target
+
+    if (name === 'category') {
+      setFormValues((current) => ({
+        ...current,
+        category: value,
+        category_other: value === 'Other' ? current.category_other : '',
+      }))
+      return
+    }
+
     setFormValues((current) => ({
       ...current,
       [name]: type === 'checkbox' ? checked : value,
@@ -55,17 +69,20 @@ function App() {
     setSubmitStatus('')
     setIsSaving(true)
 
+    const selectedCategory =
+      formValues.category === 'Other' ? formValues.category_other.trim() : formValues.category.trim()
+
     const payload = {
       content_id: formValues.content_id.trim(),
       title: formValues.title.trim(),
       series: formValues.series.trim() || null,
-      category: formValues.category.trim() || null,
+      category: selectedCategory || null,
       tags: formValues.tags
         .split(',')
         .map((tag) => tag.trim())
         .filter(Boolean),
       variant: formValues.variant.trim() || null,
-      duration: formValues.duration || null,
+      duration: formValues.duration.trim() || null,
       description: formValues.description.trim() || null,
       source_file_name: formValues.source_file_name.trim() || null,
       audio_file_name: formValues.audio_file_name.trim() || null,
@@ -115,8 +132,27 @@ function App() {
 
           <label>
             category
-            <input name="category" value={formValues.category} onChange={handleInputChange} />
+            <select name="category" value={formValues.category} onChange={handleInputChange} required>
+              <option value="">Select category</option>
+              {CATEGORY_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </label>
+
+          {formValues.category === 'Other' && (
+            <label>
+              new category
+              <input
+                name="category_other"
+                value={formValues.category_other}
+                onChange={handleInputChange}
+                required
+              />
+            </label>
+          )}
 
           <label>
             tags (comma separated)
@@ -125,7 +161,14 @@ function App() {
 
           <label>
             variant
-            <input name="variant" value={formValues.variant} onChange={handleInputChange} />
+            <select name="variant" value={formValues.variant} onChange={handleInputChange} required>
+              <option value="">Select variant</option>
+              {VARIANT_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label>
@@ -136,6 +179,7 @@ function App() {
               placeholder="mm:ss or hh:mm:ss"
               value={formValues.duration}
               onChange={handleInputChange}
+              required
             />
           </label>
 
@@ -168,11 +212,6 @@ function App() {
             />
           </label>
 
-          <label>
-            content_type
-            <input name="content_type" value={formValues.content_type} onChange={handleInputChange} />
-          </label>
-
           <label className="checkbox-label">
             <input
               type="checkbox"
@@ -181,16 +220,6 @@ function App() {
               onChange={handleInputChange}
             />
             featured
-          </label>
-
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              name="published"
-              checked={formValues.published}
-              onChange={handleInputChange}
-            />
-            published
           </label>
 
           <button className="full-width" type="submit" disabled={isSaving}>
