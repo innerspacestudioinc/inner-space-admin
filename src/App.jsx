@@ -65,7 +65,7 @@ function App() {
         .map((tag) => tag.trim())
         .filter(Boolean),
       variant: formValues.variant.trim() || null,
-      duration: formValues.duration ? Number(formValues.duration) : null,
+      duration: formValues.duration || null,
       description: formValues.description.trim() || null,
       source_file_name: formValues.source_file_name.trim() || null,
       audio_file_name: formValues.audio_file_name.trim() || null,
@@ -132,8 +132,8 @@ function App() {
             duration
             <input
               name="duration"
-              type="number"
-              min="0"
+              type="text"
+              placeholder="mm:ss or hh:mm:ss"
               value={formValues.duration}
               onChange={handleInputChange}
             />
