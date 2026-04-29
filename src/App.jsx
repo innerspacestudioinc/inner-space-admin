@@ -32,6 +32,7 @@ function App() {
   const [isUploading, setIsUploading] = useState(false)
   const [selectedAudioFile, setSelectedAudioFile] = useState(null)
   const [selectedThumbnailFile, setSelectedThumbnailFile] = useState(null)
+  const [editingContentId, setEditingContentId] = useState(null)
 
   async function loadContentRows() {
     const { data, error } = await supabase.from('content').select('*').limit(5)
@@ -48,6 +49,42 @@ function App() {
   useEffect(() => {
     loadContentRows()
   }, [])
+
+  function clearForm() {
+    setFormValues(initialFormValues)
+    setSelectedAudioFile(null)
+    setSelectedThumbnailFile(null)
+    setEditingContentId(null)
+  }
+
+  function handleRowClick(row) {
+    const rowCategory = row.category ?? ''
+    const matchesCategoryOption = CATEGORY_OPTIONS.includes(rowCategory)
+
+    setFormValues({
+      content_id: row.content_id ?? '',
+      title: row.title ?? '',
+      series: row.series ?? '',
+      category: rowCategory ? (matchesCategoryOption ? rowCategory : 'Other') : '',
+      category_other: rowCategory && !matchesCategoryOption ? rowCategory : '',
+      tags: Array.isArray(row.tags) ? row.tags.join(', ') : row.tags ?? '',
+      variant: row.variant ?? '',
+      duration: row.duration ?? '',
+      description: row.description ?? '',
+      source_file_name: row.source_file_name ?? '',
+      audio_file_name: row.audio_file_name ?? '',
+      thumbnail_file_name: row.thumbnail_file_name ?? '',
+      featured: Boolean(row.featured),
+      published: Boolean(row.published),
+      recommended_next_id: row.recommended_next_id ?? '',
+      content_type: row.content_type ?? 'guided_session',
+    })
+
+    setSelectedAudioFile(null)
+    setSelectedThumbnailFile(null)
+    setEditingContentId(row.content_id)
+    setSubmitStatus('Editing existing content item.')
+  }
 
   function handleInputChange(event) {
     const { name, value, type, checked } = event.target
@@ -152,19 +189,21 @@ function App() {
       content_type: formValues.content_type.trim() || null,
     }
 
-    const { error } = await supabase.from('content').insert(payload)
+    const query = editingContentId
+      ? supabase.from('content').update(payload).eq('content_id', editingContentId)
+      : supabase.from('content').insert(payload)
+
+    const { error } = await query
 
     if (error) {
-      setSubmitStatus(`Could not create content item: ${error.message}`)
+      setSubmitStatus(`Could not ${editingContentId ? 'update' : 'create'} content item: ${error.message}`)
       setIsSaving(false)
       setIsUploading(false)
       return
     }
 
-    setSubmitStatus('New content item created successfully ✅')
-    setFormValues(initialFormValues)
-    setSelectedAudioFile(null)
-    setSelectedThumbnailFile(null)
+    setSubmitStatus(editingContentId ? 'Content item updated successfully ✅' : 'New content item created successfully ✅')
+    clearForm()
     setIsSaving(false)
     setIsUploading(false)
     loadContentRows()
@@ -176,7 +215,8 @@ function App() {
       <p>This is your starter admin dashboard.</p>
 
       <section className="card">
-        <h2>Create content item</h2>
+        <h2>{editingContentId ? 'Edit content item' : 'Create content item'}</h2>
+        <p className="hint">Mode: {editingContentId ? `Editing ${editingContentId}` : 'Creating new content item'}</p>
         <form className="simple-form" onSubmit={handleSubmit}>
           <label>
             content_id
@@ -311,8 +351,14 @@ function App() {
           </label>
 
           <button className="full-width" type="submit" disabled={isSaving || isUploading}>
-            {isSaving ? 'Saving…' : isUploading ? 'Uploading file…' : 'Create content item'}
+            {isSaving ? 'Saving…' : isUploading ? 'Uploading file…' : editingContentId ? 'Update content item' : 'Create content item'}
           </button>
+
+          {editingContentId && (
+            <button className="full-width secondary-button" type="button" onClick={clearForm}>
+              Cancel edit
+            </button>
+          )}
         </form>
         {submitStatus && <p className="hint">{submitStatus}</p>}
       </section>
@@ -331,7 +377,7 @@ function App() {
             </thead>
             <tbody>
               {contentRows.map((row, index) => (
-                <tr key={index}>
+                <tr key={index} className="table-row" onClick={() => handleRowClick(row)}>
                   {Object.keys(contentRows[0]).map((key) => (
                     <td key={key}>{String(row[key] ?? '')}</td>
                   ))}
