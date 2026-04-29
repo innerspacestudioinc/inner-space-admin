@@ -84,3 +84,16 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+.secondary-button {
+  background: #e5e7eb !important;
+  color: #111827 !important;
+}
+
+.table-row {
+  cursor: pointer;
+}
+
+.table-row:hover {
+  background: #f9fafb;
+}
