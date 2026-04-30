@@ -38,6 +38,11 @@ function App() {
   const [categoryFilter, setCategoryFilter] = useState('')
   const [variantFilter, setVariantFilter] = useState('')
   const [publishedFilter, setPublishedFilter] = useState('')
+  const [sortConfig, setSortConfig] = useState({ key: 'content_id', direction: 'asc' })
+  const sortableColumns = useMemo(
+    () => new Set(['content_id', 'title', 'category', 'variant', 'duration', 'published']),
+    [],
+  )
 
   async function loadContentRows() {
     const { data, error } = await supabase.from('content').select('*').limit(5)
@@ -85,6 +90,41 @@ function App() {
       return matchesSearch && matchesCategory && matchesVariant && matchesPublished
     })
   }, [contentRows, searchQuery, categoryFilter, variantFilter, publishedFilter])
+
+  const sortedRows = useMemo(() => {
+    const rows = [...filteredRows]
+    const { key, direction } = sortConfig
+
+    rows.sort((a, b) => {
+      const aValue = a?.[key]
+      const bValue = b?.[key]
+
+      if (key === 'published') {
+        const aBool = Number(Boolean(aValue))
+        const bBool = Number(Boolean(bValue))
+        return direction === 'asc' ? aBool - bBool : bBool - aBool
+      }
+
+      const aText = String(aValue ?? '').toLowerCase()
+      const bText = String(bValue ?? '').toLowerCase()
+      const comparison = aText.localeCompare(bText, undefined, { numeric: true, sensitivity: 'base' })
+
+      return direction === 'asc' ? comparison : -comparison
+    })
+
+    return rows
+  }, [filteredRows, sortConfig])
+
+  function handleSort(column) {
+    if (!sortableColumns.has(column)) {
+      return
+    }
+
+    setSortConfig((current) => ({
+      key: column,
+      direction: current.key === column && current.direction === 'asc' ? 'desc' : 'asc',
+    }))
+  }
 
   function clearFilters() {
     setSearchQuery('')
@@ -488,14 +528,28 @@ function App() {
           <table>
             <thead>
               <tr>
-                {Object.keys(contentRows[0]).map((key) => (
-                  <th key={key}>{key}</th>
-                ))}
+                {Object.keys(contentRows[0]).map((key) => {
+                  const isSortable = sortableColumns.has(key)
+                  const isActive = sortConfig.key === key
+                  const indicator = isActive ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''
+
+                  return (
+                    <th key={key}>
+                      {isSortable ? (
+                        <button type="button" className="sort-button" onClick={() => handleSort(key)}>
+                          {key} {indicator}
+                        </button>
+                      ) : (
+                        key
+                      )}
+                    </th>
+                  )
+                })}
                 <th>actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredRows.map((row, index) => (
+              {sortedRows.map((row, index) => (
                 <tr key={index} className="table-row" onClick={() => handleRowClick(row)}>
                   {Object.keys(contentRows[0]).map((key) => (
                     <td key={key}>{String(row[key] ?? '')}</td>
@@ -520,7 +574,7 @@ function App() {
         ) : (
           <p className="hint">No rows returned from the <code>content</code> table.</p>
         )}
-        {contentRows.length > 0 && filteredRows.length === 0 && (
+        {contentRows.length > 0 && sortedRows.length === 0 && (
           <p className="hint">No content rows match the current filters.</p>
         )}
       </section>
