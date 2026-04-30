@@ -41,6 +41,10 @@ function buildDirtyState(values, audioFile, thumbnailFile) {
   })
 }
 
+function isMissingValue(value) {
+  return !String(value ?? '').trim()
+}
+
 function App() {
   const [status, setStatus] = useState('Checking connection...')
   const [contentRows, setContentRows] = useState([])
@@ -70,7 +74,7 @@ function App() {
   )
 
   async function loadContentRows() {
-    const { data, error } = await supabase.from('content').select('*').limit(5)
+    const { data, error } = await supabase.from('content').select('*')
 
     if (error) {
       setStatus(`Connected, but table check failed: ${error.message}`)
@@ -139,6 +143,22 @@ function App() {
 
     return rows
   }, [filteredRows, sortConfig])
+
+  const summaryCounts = useMemo(() => {
+    const total = contentRows.length
+    const published = contentRows.filter((row) => Boolean(row.published)).length
+    const draft = total - published
+    const missingAudio = contentRows.filter((row) => isMissingValue(row.audio_file_name)).length
+    const missingThumbnail = contentRows.filter((row) => isMissingValue(row.thumbnail_file_name)).length
+
+    return [
+      { label: 'Total content items', value: total },
+      { label: 'Published items', value: published },
+      { label: 'Draft / unpublished items', value: draft },
+      { label: 'Missing audio_file_name', value: missingAudio },
+      { label: 'Missing thumbnail_file_name', value: missingThumbnail },
+    ]
+  }, [contentRows])
 
   function handleSort(column) {
     if (!sortableColumns.has(column)) {
@@ -541,6 +561,17 @@ function App() {
     <main className="page">
       <h1>Inner Space Admin Dashboard</h1>
       <p>This is your starter admin dashboard.</p>
+      <section className="card">
+        <h2>Content summary</h2>
+        <div className="summary-grid">
+          {summaryCounts.map((item) => (
+            <article key={item.label} className="summary-item">
+              <p className="summary-label">{item.label}</p>
+              <p className="summary-value">{item.value}</p>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section ref={formCardRef} className={`card ${isFormHighlighted ? 'card-highlight' : ''}`}>
         <h2>{editingContentId ? 'Edit content item' : 'Create content item'}</h2>
