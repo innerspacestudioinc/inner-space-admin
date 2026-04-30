@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from './supabaseClient'
 
 const CATEGORY_OPTIONS = ['Sleep', 'Pain', 'Hormones', 'Racing Thoughts', 'Stress', 'Learn', 'Breathwork', 'Other']
@@ -33,6 +33,10 @@ function App() {
   const [selectedAudioFile, setSelectedAudioFile] = useState(null)
   const [selectedThumbnailFile, setSelectedThumbnailFile] = useState(null)
   const [editingContentId, setEditingContentId] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const [variantFilter, setVariantFilter] = useState('')
+  const [publishedFilter, setPublishedFilter] = useState('')
 
   async function loadContentRows() {
     const { data, error } = await supabase.from('content').select('*').limit(5)
@@ -49,6 +53,44 @@ function App() {
   useEffect(() => {
     loadContentRows()
   }, [])
+
+  const categoryFilterOptions = useMemo(() => {
+    return Array.from(new Set(contentRows.map((row) => row.category).filter(Boolean))).sort()
+  }, [contentRows])
+
+  const variantFilterOptions = useMemo(() => {
+    return Array.from(new Set(contentRows.map((row) => row.variant).filter(Boolean))).sort()
+  }, [contentRows])
+
+  const filteredRows = useMemo(() => {
+    const normalizedSearch = searchQuery.trim().toLowerCase()
+
+    return contentRows.filter((row) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        String(row.title ?? '')
+          .toLowerCase()
+          .includes(normalizedSearch) ||
+        String(row.content_id ?? '')
+          .toLowerCase()
+          .includes(normalizedSearch)
+
+      const matchesCategory = !categoryFilter || String(row.category ?? '') === categoryFilter
+      const matchesVariant = !variantFilter || String(row.variant ?? '') === variantFilter
+      const matchesPublished =
+        !publishedFilter ||
+        String(Boolean(row.published)) === publishedFilter
+
+      return matchesSearch && matchesCategory && matchesVariant && matchesPublished
+    })
+  }, [contentRows, searchQuery, categoryFilter, variantFilter, publishedFilter])
+
+  function clearFilters() {
+    setSearchQuery('')
+    setCategoryFilter('')
+    setVariantFilter('')
+    setPublishedFilter('')
+  }
 
   function clearForm() {
     setFormValues(initialFormValues)
@@ -366,6 +408,54 @@ function App() {
       <section className="card">
         <h2>Supabase status</h2>
         <p>{status}</p>
+        <div className="table-controls">
+          <label>
+            Search
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search by title or content_id"
+            />
+          </label>
+
+          <label>
+            Category
+            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+              <option value="">All categories</option>
+              {categoryFilterOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Variant
+            <select value={variantFilter} onChange={(event) => setVariantFilter(event.target.value)}>
+              <option value="">All variants</option>
+              {variantFilterOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Published
+            <select value={publishedFilter} onChange={(event) => setPublishedFilter(event.target.value)}>
+              <option value="">All statuses</option>
+              <option value="true">Published</option>
+              <option value="false">Unpublished</option>
+            </select>
+          </label>
+
+          <button type="button" className="secondary-button filter-clear-button" onClick={clearFilters}>
+            Clear filters
+          </button>
+        </div>
         {contentRows.length > 0 ? (
           <table>
             <thead>
@@ -376,7 +466,7 @@ function App() {
               </tr>
             </thead>
             <tbody>
-              {contentRows.map((row, index) => (
+              {filteredRows.map((row, index) => (
                 <tr key={index} className="table-row" onClick={() => handleRowClick(row)}>
                   {Object.keys(contentRows[0]).map((key) => (
                     <td key={key}>{String(row[key] ?? '')}</td>
@@ -387,6 +477,9 @@ function App() {
           </table>
         ) : (
           <p className="hint">No rows returned from the <code>content</code> table.</p>
+        )}
+        {contentRows.length > 0 && filteredRows.length === 0 && (
+          <p className="hint">No content rows match the current filters.</p>
         )}
       </section>
     </main>
