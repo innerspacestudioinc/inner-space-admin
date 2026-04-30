@@ -29,6 +29,7 @@ function App() {
   const [formValues, setFormValues] = useState(initialFormValues)
   const [submitStatus, setSubmitStatus] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [selectedAudioFile, setSelectedAudioFile] = useState(null)
   const [selectedThumbnailFile, setSelectedThumbnailFile] = useState(null)
@@ -251,6 +252,33 @@ function App() {
     loadContentRows()
   }
 
+  async function handleDelete(contentId) {
+    const confirmed = window.confirm('Are you sure you want to delete this content item?')
+
+    if (!confirmed) {
+      return
+    }
+
+    setSubmitStatus('')
+    setIsDeleting(true)
+
+    const { error } = await supabase.from('content').delete().eq('content_id', contentId)
+
+    if (error) {
+      setSubmitStatus(`Could not delete content item: ${error.message}`)
+      setIsDeleting(false)
+      return
+    }
+
+    if (editingContentId === contentId) {
+      clearForm()
+    }
+
+    setSubmitStatus('Content item deleted successfully ✅')
+    setIsDeleting(false)
+    loadContentRows()
+  }
+
   return (
     <main className="page">
       <h1>Inner Space Admin Dashboard</h1>
@@ -463,6 +491,7 @@ function App() {
                 {Object.keys(contentRows[0]).map((key) => (
                   <th key={key}>{key}</th>
                 ))}
+                <th>actions</th>
               </tr>
             </thead>
             <tbody>
@@ -471,6 +500,19 @@ function App() {
                   {Object.keys(contentRows[0]).map((key) => (
                     <td key={key}>{String(row[key] ?? '')}</td>
                   ))}
+                  <td>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      disabled={isDeleting}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        handleDelete(row.content_id)
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
