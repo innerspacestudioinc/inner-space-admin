@@ -136,44 +136,65 @@ h1 {
 .table-wrapper {
   max-height: 65vh;
   overflow: auto;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #d1d5db;
   border-radius: 10px;
 }
 
 .content-table {
-  width: 100%;
+  min-width: 100%;
+  width: max-content;
   border-collapse: collapse;
-  table-layout: fixed;
 }
 
 .content-table th,
 .content-table td {
-  padding: 0.6rem 0.7rem;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 0.85rem 1rem;
+  border: 1px solid #e5e7eb;
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
+  white-space: nowrap;
+  background: #ffffff;
 }
 
 .content-table thead th {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 2;
+  background: #f3f4f6;
+}
+
+.content-table tbody tr:nth-child(even) td {
   background: #f9fafb;
 }
 
-.content-table tbody tr:nth-child(even) {
-  background: #fcfcfd;
-}
-
-.content-table tbody tr:hover {
+.content-table tbody tr:hover td {
   background: #eef2ff;
 }
 
 .truncate-cell {
   display: block;
+  max-width: 260px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.actions-column,
+.actions-cell {
+  position: sticky;
+  right: 0;
+  z-index: 3;
+}
+
+.actions-column {
+  z-index: 4;
+  background: #f3f4f6;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 @media (max-width: 900px) {
