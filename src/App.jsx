@@ -142,11 +142,11 @@ function App() {
     setEditingContentId(null)
   }
 
-  function handleRowClick(row) {
+  function getFormValuesFromRow(row) {
     const rowCategory = row.category ?? ''
     const matchesCategoryOption = CATEGORY_OPTIONS.includes(rowCategory)
 
-    setFormValues({
+    return {
       content_id: row.content_id ?? '',
       title: row.title ?? '',
       series: row.series ?? '',
@@ -163,12 +163,32 @@ function App() {
       published: Boolean(row.published),
       recommended_next_id: row.recommended_next_id ?? '',
       content_type: row.content_type ?? 'guided_session',
-    })
+    }
+  }
+
+  function handleRowClick(row) {
+    setFormValues(getFormValuesFromRow(row))
 
     setSelectedAudioFile(null)
     setSelectedThumbnailFile(null)
     setEditingContentId(row.content_id)
     setSubmitStatus('Editing existing content item.')
+
+    formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setIsFormHighlighted(true)
+  }
+
+  function handleDuplicateClick(row) {
+    const duplicatedValues = getFormValuesFromRow(row)
+
+    setFormValues({
+      ...duplicatedValues,
+      content_id: `${row.content_id ?? ''}_copy`,
+    })
+    setSelectedAudioFile(null)
+    setSelectedThumbnailFile(null)
+    setEditingContentId(null)
+    setSubmitStatus(`Duplicating ${row.content_id}. Update any fields and click "Create content item".`)
 
     formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     setIsFormHighlighted(true)
@@ -589,6 +609,16 @@ function App() {
                       }}
                     >
                       Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        handleDuplicateClick(row)
+                      }}
+                    >
+                      Duplicate
                     </button>
                     <button
                       type="button"
