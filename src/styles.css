@@ -137,6 +137,10 @@ h1 {
   height: fit-content;
 }
 
+.preview-audio {
+  width: 100%;
+  margin-bottom: 1rem;
+}
 
 .table-wrapper {
   max-height: 65vh;

@@ -40,7 +40,10 @@ function App() {
   const [publishedFilter, setPublishedFilter] = useState('')
   const [sortConfig, setSortConfig] = useState({ key: 'content_id', direction: 'asc' })
   const [isFormHighlighted, setIsFormHighlighted] = useState(false)
+  const [activeAudioContentId, setActiveAudioContentId] = useState(null)
+  const [activeAudioUrl, setActiveAudioUrl] = useState('')
   const formCardRef = useRef(null)
+  const previewAudioRef = useRef(null)
   const sortableColumns = useMemo(
     () => new Set(['content_id', 'title', 'category', 'variant', 'duration', 'published']),
     [],
@@ -356,6 +359,46 @@ function App() {
     loadContentRows()
   }
 
+  function handleAudioPreview(row) {
+    const audioUrl = String(row.audio_file_name ?? '').trim()
+
+    if (!audioUrl) {
+      setSubmitStatus('No audio URL available for this row.')
+      return
+    }
+
+    if (activeAudioContentId === row.content_id && previewAudioRef.current && !previewAudioRef.current.paused) {
+      previewAudioRef.current.pause()
+      previewAudioRef.current.currentTime = 0
+      setActiveAudioContentId(null)
+      return
+    }
+
+    setActiveAudioContentId(row.content_id)
+    setActiveAudioUrl(audioUrl)
+  }
+
+  function handleThumbnailPreview(row) {
+    const thumbnailUrl = String(row.thumbnail_file_name ?? '').trim()
+
+    if (!thumbnailUrl) {
+      setSubmitStatus('No thumbnail URL available for this row.')
+      return
+    }
+
+    window.open(thumbnailUrl, '_blank', 'noopener,noreferrer')
+  }
+
+  useEffect(() => {
+    if (!activeAudioUrl || !previewAudioRef.current) {
+      return
+    }
+
+    previewAudioRef.current
+      .play()
+      .catch(() => setSubmitStatus('Could not play this audio preview. Check that the URL is valid.'))
+  }, [activeAudioUrl])
+
   return (
     <main className="page">
       <h1>Inner Space Admin Dashboard</h1>
@@ -561,6 +604,15 @@ function App() {
             Clear filters
           </button>
         </div>
+        <audio
+          ref={previewAudioRef}
+          src={activeAudioUrl}
+          onEnded={() => setActiveAudioContentId(null)}
+          onPause={() => setActiveAudioContentId(null)}
+          preload="none"
+          className="preview-audio"
+          controls
+        />
         {contentRows.length > 0 ? (
           <div className="table-wrapper">
             <table className="content-table">
@@ -600,6 +652,26 @@ function App() {
                     )
                   })}
                   <td className="actions-cell">
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        handleAudioPreview(row)
+                      }}
+                    >
+                      {activeAudioContentId === row.content_id ? 'Stop' : 'Play'}
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        handleThumbnailPreview(row)
+                      }}
+                    >
+                      View thumbnail
+                    </button>
                     <button
                       type="button"
                       className="secondary-button"
