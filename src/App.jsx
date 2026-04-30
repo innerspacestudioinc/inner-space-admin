@@ -139,6 +139,21 @@ function App() {
     setPublishedFilter('')
   }
 
+  async function handleCopyUrl(event, url) {
+    event.stopPropagation()
+
+    if (!url) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(url)
+      setSubmitStatus('URL copied to clipboard.')
+    } catch (error) {
+      setSubmitStatus('Unable to copy URL to clipboard.')
+    }
+  }
+
   function clearForm() {
     setFormValues(initialFormValues)
     setSelectedAudioFile(null)
@@ -715,7 +730,31 @@ function App() {
                             <span>{rowPublishStatus === 'saving' ? 'Saving…' : rowPublishStatus === 'error' ? 'Retry' : ''}</span>
                           </label>
                         ) : shouldTruncate ? (
-                          <span className="truncate-cell">{cellValue}</span>
+                          <span className="url-cell">
+                            {cellValue ? (
+                              <>
+                                <a
+                                  href={cellValue}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="truncate-cell"
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  {cellValue}
+                                </a>
+                                <button
+                                  type="button"
+                                  className="url-copy-button"
+                                  onClick={(event) => handleCopyUrl(event, cellValue)}
+                                  title={`Copy URL: ${cellValue}`}
+                                >
+                                  Copy
+                                </button>
+                              </>
+                            ) : (
+                              <span className="truncate-cell" />
+                            )}
+                          </span>
                         ) : (
                           cellValue
                         )}
