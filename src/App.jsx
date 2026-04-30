@@ -546,7 +546,7 @@ function App() {
                     </th>
                   )
                 })}
-                <th>actions</th>
+                <th className="actions-column">actions</th>
               </tr>
             </thead>
             <tbody>
@@ -562,7 +562,17 @@ function App() {
                       </td>
                     )
                   })}
-                  <td>
+                  <td className="actions-cell">
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        handleRowClick(row)
+                      }}
+                    >
+                      Edit
+                    </button>
                     <button
                       type="button"
                       className="secondary-button"
