@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from './supabaseClient'
 
 const CATEGORY_OPTIONS = ['Sleep', 'Pain', 'Hormones', 'Racing Thoughts', 'Stress', 'Learn', 'Breathwork', 'Other']
@@ -39,6 +39,8 @@ function App() {
   const [variantFilter, setVariantFilter] = useState('')
   const [publishedFilter, setPublishedFilter] = useState('')
   const [sortConfig, setSortConfig] = useState({ key: 'content_id', direction: 'asc' })
+  const [isFormHighlighted, setIsFormHighlighted] = useState(false)
+  const formCardRef = useRef(null)
   const sortableColumns = useMemo(
     () => new Set(['content_id', 'title', 'category', 'variant', 'duration', 'published']),
     [],
@@ -167,7 +169,22 @@ function App() {
     setSelectedThumbnailFile(null)
     setEditingContentId(row.content_id)
     setSubmitStatus('Editing existing content item.')
+
+    formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setIsFormHighlighted(true)
   }
+
+  useEffect(() => {
+    if (!isFormHighlighted) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setIsFormHighlighted(false)
+    }, 1200)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [isFormHighlighted])
 
   function handleInputChange(event) {
     const { name, value, type, checked } = event.target
@@ -324,7 +341,7 @@ function App() {
       <h1>Inner Space Admin Dashboard</h1>
       <p>This is your starter admin dashboard.</p>
 
-      <section className="card">
+      <section ref={formCardRef} className={`card ${isFormHighlighted ? 'card-highlight' : ''}`}>
         <h2>{editingContentId ? 'Edit content item' : 'Create content item'}</h2>
         <p className="hint">Mode: {editingContentId ? `Editing ${editingContentId}` : 'Creating new content item'}</p>
         <form className="simple-form" onSubmit={handleSubmit}>
