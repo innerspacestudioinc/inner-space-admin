@@ -525,7 +525,8 @@ function App() {
           </button>
         </div>
         {contentRows.length > 0 ? (
-          <table>
+          <div className="table-wrapper">
+            <table className="content-table">
             <thead>
               <tr>
                 {Object.keys(contentRows[0]).map((key) => {
@@ -551,9 +552,16 @@ function App() {
             <tbody>
               {sortedRows.map((row, index) => (
                 <tr key={index} className="table-row" onClick={() => handleRowClick(row)}>
-                  {Object.keys(contentRows[0]).map((key) => (
-                    <td key={key}>{String(row[key] ?? '')}</td>
-                  ))}
+                  {Object.keys(contentRows[0]).map((key) => {
+                    const cellValue = String(row[key] ?? '')
+                    const shouldTruncate = key === 'audio_file_name' || key === 'thumbnail_file_name'
+
+                    return (
+                      <td key={key} title={shouldTruncate ? cellValue : undefined}>
+                        {shouldTruncate ? <span className="truncate-cell">{cellValue}</span> : cellValue}
+                      </td>
+                    )
+                  })}
                   <td>
                     <button
                       type="button"
@@ -570,7 +578,8 @@ function App() {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         ) : (
           <p className="hint">No rows returned from the <code>content</code> table.</p>
         )}
