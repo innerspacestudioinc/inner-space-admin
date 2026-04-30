@@ -188,6 +188,17 @@ h1 {
   white-space: nowrap;
 }
 
+.url-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.url-copy-button {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.35rem;
+}
+
 .actions-column,
 .actions-cell {
   position: sticky;
