@@ -195,7 +195,21 @@ function App() {
     }
   }
 
+  function confirmDiscardUnsavedChanges() {
+    if (!hasUnsavedChanges) {
+      return true
+    }
+
+    return window.confirm('You have unsaved changes. Discard them and load this item?')
+  }
+
   function handleRowClick(row) {
+    const shouldLoadRow = confirmDiscardUnsavedChanges()
+
+    if (!shouldLoadRow) {
+      return
+    }
+
     const rowFormValues = getFormValuesFromRow(row)
     setFormValues(rowFormValues)
 
@@ -210,6 +224,12 @@ function App() {
   }
 
   function handleDuplicateClick(row) {
+    const shouldDuplicateRow = confirmDiscardUnsavedChanges()
+
+    if (!shouldDuplicateRow) {
+      return
+    }
+
     const duplicatedValues = getFormValuesFromRow(row)
     const duplicatedFormValues = {
       ...duplicatedValues,
