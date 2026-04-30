@@ -98,6 +98,16 @@ h1 {
   background: #f9fafb;
 }
 
+.sort-button {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  cursor: pointer;
+}
+
 .table-controls {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
