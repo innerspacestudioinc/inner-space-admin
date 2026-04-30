@@ -3,15 +3,25 @@ import { supabase } from './supabaseClient'
 
 const CATEGORY_OPTIONS = ['Sleep', 'Pain', 'Hormones', 'Racing Thoughts', 'Stress', 'Learn', 'Breathwork', 'Other']
 const VARIANT_OPTIONS = ['Voice Only', 'Ambience', 'Brown Noise', 'Mix']
+const LAST_CATEGORY_STORAGE_KEY = 'contentFormLastCategory'
 
-const initialFormValues = {
+function getRememberedCategory() {
+  if (typeof window === 'undefined') {
+    return ''
+  }
+
+  const rememberedCategory = window.localStorage.getItem(LAST_CATEGORY_STORAGE_KEY)
+  return rememberedCategory ?? ''
+}
+
+const createInitialFormValues = () => ({
   content_id: '',
   title: '',
   series: '',
-  category: '',
+  category: getRememberedCategory(),
   category_other: '',
   tags: '',
-  variant: '',
+  variant: 'Voice Only',
   duration: '',
   description: '',
   source_file_name: '',
@@ -21,7 +31,7 @@ const initialFormValues = {
   published: true,
   recommended_next_id: '',
   content_type: 'guided_session',
-}
+})
 
 function buildDirtyState(values, audioFile, thumbnailFile) {
   return JSON.stringify({
@@ -34,7 +44,7 @@ function buildDirtyState(values, audioFile, thumbnailFile) {
 function App() {
   const [status, setStatus] = useState('Checking connection...')
   const [contentRows, setContentRows] = useState([])
-  const [formValues, setFormValues] = useState(initialFormValues)
+  const [formValues, setFormValues] = useState(() => createInitialFormValues())
   const [submitStatus, setSubmitStatus] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -51,7 +61,7 @@ function App() {
   const [activeAudioContentId, setActiveAudioContentId] = useState(null)
   const [activeAudioUrl, setActiveAudioUrl] = useState('')
   const [publishUpdateStatus, setPublishUpdateStatus] = useState({})
-  const [pristineState, setPristineState] = useState(() => buildDirtyState(initialFormValues, null, null))
+  const [pristineState, setPristineState] = useState(() => buildDirtyState(createInitialFormValues(), null, null))
   const formCardRef = useRef(null)
   const previewAudioRef = useRef(null)
   const sortableColumns = useMemo(
@@ -164,11 +174,12 @@ function App() {
   }
 
   function clearForm() {
-    setFormValues(initialFormValues)
+    const nextInitialValues = createInitialFormValues()
+    setFormValues(nextInitialValues)
     setSelectedAudioFile(null)
     setSelectedThumbnailFile(null)
     setEditingContentId(null)
-    setPristineState(buildDirtyState(initialFormValues, null, null))
+    setPristineState(buildDirtyState(nextInitialValues, null, null))
   }
 
   function getFormValuesFromRow(row) {
@@ -263,6 +274,7 @@ function App() {
     const { name, value, type, checked } = event.target
 
     if (name === 'category') {
+      window.localStorage.setItem(LAST_CATEGORY_STORAGE_KEY, value)
       setFormValues((current) => ({
         ...current,
         category: value,
