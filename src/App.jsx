@@ -42,6 +42,7 @@ function App() {
   const [isFormHighlighted, setIsFormHighlighted] = useState(false)
   const [activeAudioContentId, setActiveAudioContentId] = useState(null)
   const [activeAudioUrl, setActiveAudioUrl] = useState('')
+  const [publishUpdateStatus, setPublishUpdateStatus] = useState({})
   const formCardRef = useRef(null)
   const previewAudioRef = useRef(null)
   const sortableColumns = useMemo(
@@ -359,6 +360,57 @@ function App() {
     loadContentRows()
   }
 
+  async function handlePublishedToggle(row, nextPublished) {
+    const contentId = row.content_id
+    if (!contentId) {
+      return
+    }
+
+    setPublishUpdateStatus((current) => ({
+      ...current,
+      [contentId]: 'saving',
+    }))
+
+    setContentRows((currentRows) =>
+      currentRows.map((currentRow) =>
+        currentRow.content_id === contentId ? { ...currentRow, published: nextPublished } : currentRow,
+      ),
+    )
+
+    const { error } = await supabase.from('content').update({ published: nextPublished }).eq('content_id', contentId)
+
+    if (error) {
+      setContentRows((currentRows) =>
+        currentRows.map((currentRow) =>
+          currentRow.content_id === contentId ? { ...currentRow, published: row.published } : currentRow,
+        ),
+      )
+      setPublishUpdateStatus((current) => ({
+        ...current,
+        [contentId]: 'error',
+      }))
+      setSubmitStatus(`Could not update published status for ${contentId}: ${error.message}`)
+      return
+    }
+
+    setPublishUpdateStatus((current) => ({
+      ...current,
+      [contentId]: 'saved',
+    }))
+
+    window.setTimeout(() => {
+      setPublishUpdateStatus((current) => {
+        if (current[contentId] !== 'saved') {
+          return current
+        }
+
+        const next = { ...current }
+        delete next[contentId]
+        return next
+      })
+    }, 900)
+  }
+
   function handleAudioPreview(row) {
     const audioUrl = String(row.audio_file_name ?? '').trim()
 
@@ -644,10 +696,29 @@ function App() {
                   {Object.keys(contentRows[0]).map((key) => {
                     const cellValue = String(row[key] ?? '')
                     const shouldTruncate = key === 'audio_file_name' || key === 'thumbnail_file_name'
+                    const rowPublishStatus = publishUpdateStatus[row.content_id]
 
                     return (
                       <td key={key} title={shouldTruncate ? cellValue : undefined}>
-                        {shouldTruncate ? <span className="truncate-cell">{cellValue}</span> : cellValue}
+                        {key === 'published' ? (
+                          <label className="checkbox-label inline-publish-toggle">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(row.published)}
+                              disabled={rowPublishStatus === 'saving'}
+                              onClick={(event) => event.stopPropagation()}
+                              onChange={(event) => {
+                                event.stopPropagation()
+                                handlePublishedToggle(row, event.target.checked)
+                              }}
+                            />
+                            <span>{rowPublishStatus === 'saving' ? 'Saving…' : rowPublishStatus === 'error' ? 'Retry' : ''}</span>
+                          </label>
+                        ) : shouldTruncate ? (
+                          <span className="truncate-cell">{cellValue}</span>
+                        ) : (
+                          cellValue
+                        )}
                       </td>
                     )
                   })}
