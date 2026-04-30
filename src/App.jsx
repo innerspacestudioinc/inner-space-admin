@@ -23,6 +23,14 @@ const initialFormValues = {
   content_type: 'guided_session',
 }
 
+function buildDirtyState(values, audioFile, thumbnailFile) {
+  return JSON.stringify({
+    values,
+    selectedAudioFileName: audioFile?.name ?? null,
+    selectedThumbnailFileName: thumbnailFile?.name ?? null,
+  })
+}
+
 function App() {
   const [status, setStatus] = useState('Checking connection...')
   const [contentRows, setContentRows] = useState([])
@@ -43,6 +51,7 @@ function App() {
   const [activeAudioContentId, setActiveAudioContentId] = useState(null)
   const [activeAudioUrl, setActiveAudioUrl] = useState('')
   const [publishUpdateStatus, setPublishUpdateStatus] = useState({})
+  const [pristineState, setPristineState] = useState(() => buildDirtyState(initialFormValues, null, null))
   const formCardRef = useRef(null)
   const previewAudioRef = useRef(null)
   const sortableColumns = useMemo(
@@ -159,6 +168,7 @@ function App() {
     setSelectedAudioFile(null)
     setSelectedThumbnailFile(null)
     setEditingContentId(null)
+    setPristineState(buildDirtyState(initialFormValues, null, null))
   }
 
   function getFormValuesFromRow(row) {
@@ -186,11 +196,13 @@ function App() {
   }
 
   function handleRowClick(row) {
-    setFormValues(getFormValuesFromRow(row))
+    const rowFormValues = getFormValuesFromRow(row)
+    setFormValues(rowFormValues)
 
     setSelectedAudioFile(null)
     setSelectedThumbnailFile(null)
     setEditingContentId(row.content_id)
+    setPristineState(buildDirtyState(rowFormValues, null, null))
     setSubmitStatus('Editing existing content item.')
 
     formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -199,14 +211,16 @@ function App() {
 
   function handleDuplicateClick(row) {
     const duplicatedValues = getFormValuesFromRow(row)
-
-    setFormValues({
+    const duplicatedFormValues = {
       ...duplicatedValues,
       content_id: `${row.content_id ?? ''}_copy`,
-    })
+    }
+
+    setFormValues(duplicatedFormValues)
     setSelectedAudioFile(null)
     setSelectedThumbnailFile(null)
     setEditingContentId(null)
+    setPristineState(buildDirtyState(duplicatedFormValues, null, null))
     setSubmitStatus(`Duplicating ${row.content_id}. Update any fields and click "Create content item".`)
 
     formCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -274,6 +288,31 @@ function App() {
     const file = event.target.files?.[0]
     setSelectedThumbnailFile(file ?? null)
   }
+
+  const hasUnsavedChanges = useMemo(
+    () => buildDirtyState(formValues, selectedAudioFile, selectedThumbnailFile) !== pristineState,
+    [formValues, pristineState, selectedAudioFile, selectedThumbnailFile],
+  )
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) {
+      return undefined
+    }
+
+    const warningMessage = 'Your changes are not saved. Are you sure you want to leave?'
+
+    const handleBeforeUnload = (event) => {
+      event.preventDefault()
+      event.returnValue = warningMessage
+      return warningMessage
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [hasUnsavedChanges])
 
   async function handleSubmit(event) {
     event.preventDefault()
